@@ -185,6 +185,19 @@ else:
     st.sidebar.write(f"🔒 **Role:** {st.session_state['role']}")
     st.sidebar.markdown("---")
     
+    # --- ADDED SIMULATION BUTTON FOR ONLINE DEMO ---
+    st.sidebar.subheader("🚨 Incident Simulation")
+    if st.sidebar.button("Simulate Attack"):
+        st.session_state.attack_count += 1
+        st.session_state.live_logs.insert(0, {
+            "Timestamp": time.strftime('%Y-%m-%d %H:%M:%S'),
+            "File Name": HONEYFILE_NAME,
+            "Action Type": "MODIFIED / BREACH",
+            "Classification": "🔴 ATTACK (1) [Simulated Honeyfile Deception Triggered]"
+        })
+        st.rerun()
+
+    st.sidebar.markdown("---")
     if st.sidebar.button("🔄 Refresh View", use_container_width=True):
         st.rerun()
         
