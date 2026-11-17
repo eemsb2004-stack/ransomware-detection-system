@@ -54,19 +54,11 @@ def login_page():
 if not st.session_state["authenticated"]:
     login_page()
 else:
-    # === SIDEBAR CONTROL PANEL & CONFIG ===
-    st.sidebar.title("Secure Control Panel")
-    st.sidebar.write(f"👤 **User:** {st.session_state['username']}")
-    st.sidebar.write(f"🔒 **Role:** {st.session_state['role']}")
-    st.sidebar.markdown("---")
-    
-    # --- DYNAMIC CONFIGURATION INPUTS FOR ANY USER OPENING THE LINK ---
-    st.sidebar.subheader("⚙️ Target Configuration")
-    MONITORED_PATH = st.sidebar.text_input("Enter Folder Path to Monitor:", value="monitoring")
-    HONEYFILE_NAME = st.sidebar.text_input("Enter Honeyfile Name:", value="Password_hf.txt")
-    
+    # === PATHS & CONFIG ===
+    MONITORED_PATH = "monitoring"
+    HONEYFILE_NAME = "Password_hf.txt"
+
     os.makedirs(MONITORED_PATH, exist_ok=True)
-    st.sidebar.markdown("---")
 
     # === SESSION STATE FOR WATCHDOG & LOGS ===
     if "live_logs" not in st.session_state:
@@ -115,19 +107,17 @@ else:
                 "Is Honeyfile": is_honeyfile
             })
 
-    def start_background_observer(path_to_watch):
+    def start_background_observer():
         event_handler = LiveDashboardHandler()
         observer = Observer()
-        if os.path.exists(path_to_watch):
-            observer.schedule(event_handler, path=path_to_watch, recursive=False)
-            observer.start()
-            while True:
-                time.sleep(1)
+        observer.schedule(event_handler, path=MONITORED_PATH, recursive=False)
+        observer.start()
+        while True:
+            time.sleep(1)
 
-    if "observer_path" not in st.session_state or st.session_state.observer_path != MONITORED_PATH:
-        st.session_state.observer_path = MONITORED_PATH
+    if "observer_running" not in st.session_state:
         st.session_state.observer_running = True
-        obs_thread = Thread(target=start_background_observer, args=(MONITORED_PATH,), daemon=True)
+        obs_thread = Thread(target=start_background_observer, daemon=True)
         obs_thread.start()
 
     # === DRAIN QUEUE INTO SESSION STATE ===
@@ -148,7 +138,7 @@ else:
                 status = f"🔴 ATTACK (1) [Multiple Files Deleted: {st.session_state.deleted_files_count}]"
                 st.session_state.attack_count += 1
             else:
-                status = "🟡 WARNING (2) [Single File Deleted]"
+                status = f"🟡 WARNING (2) [File Deleted: {filename}]"
                 st.session_state.warning_count += 1
         elif action == "MODIFIED":
             if filename not in st.session_state.file_mod_counts:
@@ -160,14 +150,14 @@ else:
             if mod_count > 10:
                 status = f"🔴 ATTACK (1) [Excessive Modifications ({mod_count}) on '{filename}']"
                 st.session_state.attack_count += 1
-            elif 5 <= mod_count <= 10:
+            elif 3 <= mod_count <= 10:
                 status = f"🟡 WARNING (2) [Suspicious Modifications ({mod_count}) on '{filename}']"
                 st.session_state.warning_count += 1
             else:
-                status = f"🟢 NORMAL (0) [Minor Modifications ({mod_count}) on '{filename}']"
+                status = f"🟢 NORMAL (0) [Modified: {filename}]"
                 st.session_state.normal_count += 1
         else:
-            status = "🟢 NORMAL (0) [File Created / Safe Action]"
+            status = f"🟢 NORMAL (0) [Created/Action: {filename}]"
             st.session_state.normal_count += 1
 
         st.session_state.live_logs.insert(0, {
@@ -189,19 +179,12 @@ else:
         else:
             latest_status = "NORMAL"
 
-    # --- ADDED SIMULATION BUTTON FOR ONLINE DEMO ---
-    st.sidebar.subheader("🚨 Incident Simulation")
-    if st.sidebar.button("Simulate Attack"):
-        st.session_state.attack_count += 1
-        st.session_state.live_logs.insert(0, {
-            "Timestamp": time.strftime('%Y-%m-%d %H:%M:%S'),
-            "File Name": HONEYFILE_NAME,
-            "Action Type": "MODIFIED / BREACH",
-            "Classification": "🔴 ATTACK (1) [Simulated Honeyfile Deception Triggered]"
-        })
-        st.rerun()
-
+    # === SIDEBAR CONTROL PANEL & LOGOUT ===
+    st.sidebar.title("Secure Control Panel")
+    st.sidebar.write(f"👤 **User:** {st.session_state['username']}")
+    st.sidebar.write(f"🔒 **Role:** {st.session_state['role']}")
     st.sidebar.markdown("---")
+    
     if st.sidebar.button("🔄 Refresh View", use_container_width=True):
         st.rerun()
         
@@ -216,8 +199,7 @@ else:
     col_title, col_action = st.columns([4, 1])
     with col_title:
         st.title("🛡️ Adaptive Early Detection & Automated Response System for Ransomware")
-        st.markdown(f"Integrated Architecture: **Watchdog Telemetry** | **Honeypot Deception** | **Feature Extractor** | **Kill-Switch (psutil)**")
-        st.markdown(f"📍 **Active Monitor Path:** `{MONITORED_PATH}` | 🎯 **Target Honeyfile:** `{HONEYFILE_NAME}`")
+        st.markdown("Integrated Architecture: **Watchdog Telemetry** | **Honeypot Deception** | **Feature Extractor** | **Kill-Switch (psutil)**")
     with col_action:
         st.write("")
 
@@ -281,4 +263,4 @@ else:
         df_logs = pd.DataFrame(st.session_state.live_logs)
         st.dataframe(df_logs, use_container_width=True)
     else:
-        st.info("No actions recorded yet. Perform file actions inside the specified folder and click 'Refresh View'.")
+        st.info("No actions recorded yet. Perform file actions inside the `monitoring` folder and click 'Refresh View'.")
