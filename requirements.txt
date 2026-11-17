@@ -1,0 +1,7 @@
+streamlit
+watchdog
+psutil
+pandas
+scikit-learn
+xgboost
+joblib
